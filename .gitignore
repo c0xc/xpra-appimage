@@ -1,0 +1,15 @@
+# Build artifacts
+build/
+*.AppImage
+*.log
+
+# Python
+__pycache__/
+*.py[cod]
+*.so
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo

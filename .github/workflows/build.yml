@@ -34,9 +34,26 @@ jobs:
           ls -la
       - name: Fix workspace permissions
         run: sudo chmod 777 ${{ github.workspace }}
+      - name: Login to GHCR
+        run: |
+          echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u c0xc --password-stdin
+      - name: Find latest monthly builder image
+        id: find_image
+        run: |
+          LATEST_MONTHLY=$(curl -s -H "Authorization: Bearer ${{ secrets.GHCR_TOKEN }}" \
+            "https://ghcr.io/v2/c0xc/xpra-appimage/builder/tags/list" \
+            | jq -r '.tags[] | select(startswith("monthly-"))' | sort | tail -n1)
+          
+          if [ -n "$LATEST_MONTHLY" ]; then
+            echo "builder_image=ghcr.io/c0xc/xpra-appimage/builder:$LATEST_MONTHLY" >> $GITHUB_OUTPUT
+            echo "Using latest monthly image: $LATEST_MONTHLY"
+          else
+            echo "builder_image=ghcr.io/c0xc/xpra-appimage/builder:latest" >> $GITHUB_OUTPUT
+            echo "No monthly tag found, using :latest"
+          fi
       - name: Pull builder image
         run: |
-          docker pull ghcr.io/c0xc/xpra-appimage/builder:latest
+          docker pull ${{ steps.find_image.outputs.builder_image }}
       - name: Run build
         run: |
           USE_FORK=false
@@ -49,7 +66,7 @@ jobs:
             -e USE_FORK="$USE_FORK" \
             -e FORK_REPO_URL="$FORK_REPO_URL" \
             -e REPO_BRANCH="${{ github.event.inputs.ref }}" \
-            -v ${{ github.workspace }}:/workspace ghcr.io/c0xc/xpra-appimage/builder:latest
+            -v ${{ github.workspace }}:/workspace ${{ steps.find_image.outputs.builder_image }}
           df -h
           pwd
           ls -la

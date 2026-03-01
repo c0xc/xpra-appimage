@@ -1,4 +1,4 @@
-name: Build Xpra AppImage
+name: Manual Xpra Build
 
 on:
   workflow_dispatch:
@@ -13,12 +13,19 @@ on:
           - c0xc-fork
       ref:
         description: 'Git tag or branch to check out'
-        required: false
+        required: true
         default: 'master'
-  push:
-    branches:
-      - master
-      - test
+        type: string
+      commit:
+        description: 'Optional commit hash to check out'
+        required: false
+        default: ''
+        type: string
+      create_release:
+        description: 'Create a GitHub release after build'
+        required: false
+        default: 'false'
+        type: boolean
 
 jobs:
   build:
@@ -68,6 +75,7 @@ jobs:
             -e USE_FORK="$USE_FORK" \
             -e FORK_REPO_URL="$FORK_REPO_URL" \
             -e REPO_BRANCH="${{ github.event.inputs.ref }}" \
+            -e REPO_COMMIT="${{ github.event.inputs.commit }}" \
             -v ${{ github.workspace }}:/workspace ${{ steps.find_image.outputs.builder_image }}
           df -h
           pwd
@@ -75,6 +83,31 @@ jobs:
           echo "[GH runner] Build complete"
           ls -ld ${{ github.workspace }}
           ls -lAh ${{ github.workspace }}/build
+      - name: Get date
+        id: date
+        run: |
+          echo "date=$(date +%Y-%m-%d)" >> $GITHUB_OUTPUT
+      - name: Create Release
+        id: create-release
+        if: ${{ github.event.inputs.create_release == 'true' }}
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: manual-build-${{ github.run_number }}
+          release_name: "Xpra Build ${{ github.event.inputs.ref }}:${{ github.event.inputs.commit }} [#${{ github.run_number }}] ${{ steps.date.outputs.date }}"
+          draft: false
+          prerelease: true
+      - name: Upload Release Asset
+        if: ${{ github.event.inputs.create_release == 'true' }}
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create-release.outputs.upload_url }}
+          asset_path: ${{ github.workspace }}/build/Xpra-x86_64.AppImage
+          asset_name: xpra-manual-${{ github.run_number }}.AppImage
+          asset_content_type: application/octet-stream
       - name: Upload AppImage artifact
         uses: actions/upload-artifact@v4
         with:

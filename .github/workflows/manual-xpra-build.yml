@@ -90,24 +90,13 @@ jobs:
       - name: Create Release
         id: create-release
         if: ${{ github.event.inputs.create_release == 'true' }}
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: softprops/action-gh-release@v2
         with:
           tag_name: manual-build-${{ github.run_number }}
-          release_name: "Xpra Build ${{ github.event.inputs.ref }}:${{ github.event.inputs.commit }} [#${{ github.run_number }}] ${{ steps.date.outputs.date }}"
+          name: "Xpra Build ${{ github.event.inputs.ref }}:${{ github.event.inputs.commit }} [#${{ github.run_number }}] ${{ steps.date.outputs.date }}"
           draft: false
           prerelease: true
-      - name: Upload Release Asset
-        if: ${{ github.event.inputs.create_release == 'true' }}
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create-release.outputs.upload_url }}
-          asset_path: ${{ github.workspace }}/build/Xpra-x86_64.AppImage
-          asset_name: xpra-manual-${{ github.run_number }}.AppImage
-          asset_content_type: application/octet-stream
+          files: ${{ github.workspace }}/build/Xpra-x86_64.AppImage
       - name: Upload AppImage artifact
         uses: actions/upload-artifact@v4
         with:

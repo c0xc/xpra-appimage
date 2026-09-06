@@ -58,11 +58,13 @@ jobs:
                      "latest"; do
             if docker pull "$IMAGE_REF:$TAG" >/dev/null 2>&1; then
               echo "builder_image=$IMAGE_REF:$TAG" >> $GITHUB_OUTPUT
+              echo "builder_image_short=${IMAGE_REF##*/}:$TAG" >> $GITHUB_OUTPUT
               echo "Using image: $IMAGE_REF:$TAG"
               exit 0
             fi
           done
           echo "builder_image=$IMAGE_REF:latest" >> $GITHUB_OUTPUT
+          echo "builder_image_short=${IMAGE_REF##*/}:latest" >> $GITHUB_OUTPUT
           echo "No monthly tag found, using :latest"
       - name: Pull builder image
         run: |
@@ -103,6 +105,9 @@ jobs:
           name: "Xpra Build ${{ github.event.inputs.ref }}:${{ github.event.inputs.commit }} [#${{ github.run_number }}] ${{ steps.date.outputs.date }}"
           draft: false
           prerelease: true
+          body: |
+            **Source:** ${{ github.event.inputs.xpra_repo == 'c0xc-fork' && 'github.com/c0xc/xpra.git' || 'github.com/Xpra-org/xpra.git' }} @ ${{ github.event.inputs.ref }}${{ github.event.inputs.commit != '' && format(' ({0})', github.event.inputs.commit) || '' }}
+            **Builder image:** ${{ steps.find_image.outputs.builder_image_short }}
           files: ${{ github.workspace }}/build/Xpra-x86_64.AppImage
       - name: Upload AppImage artifact
         uses: actions/upload-artifact@v4
